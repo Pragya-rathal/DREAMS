@@ -78,8 +78,12 @@
         background-color: #c62828 !important;
     }
 
+    .narrative-link-section {
+        padding: 2rem 0 0;
+    }
+
     .narrative-link-card {
-        background: linear-gradient(135deg, #1a237e 0%, #1e1e1e 80%);
+        background-color: #1e1e1e;
         border: 1px solid #333;
         border-radius: 1rem;
         padding: 1.5rem 2rem;
@@ -125,7 +129,7 @@
 <div class="container">
 
     <!-- Narrative Structure Analysis Link -->
-    <section style="padding: 2rem 0 0;">
+    <section class="narrative-link-section">
         <a href="{{ url_for('dashboard.narrative', target=user_id) }}" class="narrative-link-card">
             <div class="d-flex align-items-center">
                 <div class="nlc-icon"><i class="fa-solid fa-diagram-project"></i></div>

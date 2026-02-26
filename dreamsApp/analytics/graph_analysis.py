@@ -196,12 +196,9 @@ def _compute_emotional_cycles(G: nx.DiGraph) -> List[List[str]]:
         else:
             label_graph.add_edge(src, tgt, weight=1)
 
-    cycles: List[List[str]] = []
-    for cycle in nx.simple_cycles(label_graph):
-        cycles.append(cycle)
-        if len(cycles) >= _MAX_CYCLES:
-            break
-    return cycles
+    # Sort cycles by length to prioritize shorter, more fundamental loops.
+    all_cycles = sorted(nx.simple_cycles(label_graph), key=len)
+    return all_cycles[:_MAX_CYCLES]
 
 
 def _compute_label_distribution(G: nx.DiGraph) -> Dict[str, int]:

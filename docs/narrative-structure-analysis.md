@@ -9,15 +9,14 @@ End-to-end documentation for the graph-based emotional narrative analysis featur
 1. [What This Feature Does](#what-this-feature-does)
 2. [Pipeline Overview](#pipeline-overview)
 3. [Data Flow](#data-flow)
-4. [Core Concepts](#core-concepts)
-5. [Analytics Module — `graph_analysis.py`](#analytics-module)
-6. [API Endpoint](#api-endpoint)
-7. [Dashboard Visualization](#dashboard-visualization)
-8. [Configuration](#configuration)
-9. [File Map](#file-map)
-10. [Testing](#testing)
-11. [Known Limitations](#known-limitations)
-12. [Future Roadmap](#future-roadmap)
+4. [Analytics Module — `graph_analysis.py`](#analytics-module)
+5. [API Endpoint](#api-endpoint)
+6. [Dashboard Visualization](#dashboard-visualization)
+7. [Configuration](#configuration)
+8. [File Map](#file-map)
+9. [Testing](#testing)
+10. [Known Limitations](#known-limitations)
+11. [Future Roadmap](#future-roadmap)
 
 ---
 
@@ -272,7 +271,7 @@ result = analyze_narrative_graph(narrative_graph)
 
 ### `GET /api/analytics/graph-metrics/<user_id>`
 
-**Authentication:** Public (no login required). Designed for external tool access (Postman, research scripts).
+**Authentication:** Login required
 
 **Parameters:**
 | Parameter | Type | Location | Description |
@@ -284,6 +283,8 @@ result = analyze_narrative_graph(narrative_graph)
 | Status | Body | When |
 |--------|------|------|
 | `200` | `{"user_id": "...", "metrics": {...}}` | Analysis completed |
+| `302` | Redirect to `/auth/login` | Request is not authenticated |
+| `400` | `{"error": "Invalid user_id format"}` | `user_id` contains illegal characters or exceeds 64 chars |
 | `404` | `{"error": "No posts found for user", "user_id": "..."}` | No posts exist for this user_id |
 | `500` | `{"error": "Failed to compute graph metrics"}` | Server error (details logged, not exposed) |
 
@@ -401,7 +402,7 @@ These are currently hardcoded but can be made configurable via `app.config` in t
 | File | Test Count | Scope |
 |------|-----------|-------|
 | `tests/test_graph_analysis.py` | 32 | Unit tests for all metric computations + edges + to_networkx() |
-| `tests/test_graph_metrics_api.py` | 8 | Integration tests for API endpoint + dashboard route |
+| `tests/test_graph_metrics_api.py` | 9 | Integration tests for API endpoint + dashboard route |
 
 ---
 
@@ -427,11 +428,12 @@ python -m pytest tests/test_graph_analysis.py tests/test_graph_metrics_api.py te
 - Edge response (count matches summary, correct structure, DAG ordering)
 - `to_networkx()` (node/edge counts, attributes, empty graph handling)
 
-**Integration tests (`test_graph_metrics_api.py` — 8 tests):**
+**Integration tests (`test_graph_metrics_api.py` — 9 tests):**
 - 404 for missing user
 - 200 with valid data + correct JSON structure
 - All response sections present (graph_summary, node_metrics, edges, pattern_analysis)
-- Public access (no login redirect)
+- Unauthenticated requests redirect to login (302)
+- Invalid `user_id` (bad chars or length > 64) returns 400
 - Narrative page returns 200
 - Narrative page contains D3 and Chart.js references
 - Narrative page contains all expected DOM elements

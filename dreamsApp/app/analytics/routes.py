@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 import re
 
 from flask import jsonify, current_app
+from flask_login import login_required
 from . import bp
 
 from dreamsApp.app.builder import build_emotion_timeline
@@ -37,6 +38,7 @@ DEFAULT_ADJACENCY_THRESHOLD = timedelta(days=7)
 
 
 @bp.route('/graph-metrics/<string:user_id>', methods=['GET'])
+@login_required
 def graph_metrics(user_id: str):
     """
     Compute and return structural graph metrics for a user's emotional narrative.

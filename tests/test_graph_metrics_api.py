@@ -192,21 +192,14 @@ class TestGraphMetricsEndpoint:
             assert 'edges' in metrics
             assert isinstance(metrics['edges'], list)
 
-    def test_unauthenticated_returns_json(self, app, client):
-        """API endpoint is public — unauthenticated requests get JSON, not a redirect."""
-        mock_find = MagicMock()
-        mock_find.sort = MagicMock(return_value=[])
-        mock_collection = MagicMock()
-        mock_collection.find = MagicMock(return_value=mock_find)
-
+    def test_unauthenticated_redirects_to_login(self, app, client):
+        """API endpoint requires login — unauthenticated requests are redirected."""
         with app.app_context():
-            app.mongo = {'posts': mock_collection}
             app.config['LOGIN_DISABLED'] = False
 
             resp = client.get('/api/analytics/graph-metrics/some_user')
-            # No longer redirects — returns 404 JSON (no posts) instead
-            assert resp.status_code in (200, 404)
-            assert resp.content_type == 'application/json'
+            # @login_required redirects to the login page
+            assert resp.status_code == 302
 
     def test_invalid_user_id_returns_400(self, app, client):
         """User IDs with special characters or excessive length are rejected."""
