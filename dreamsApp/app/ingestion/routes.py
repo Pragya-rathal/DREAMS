@@ -9,7 +9,7 @@ from .  import bp
 from ..utils.sentiment import get_image_caption_and_sentiment, get_chime_category, select_text_for_analysis
 from ..utils.keywords import extract_keywords_and_vectors
 from ..utils.clustering import cluster_keywords_for_all_users
-from ..utils.location_extractor import extract_gps_from_image
+from ..utils.location_extractor import extract_gps_from_image, enrich_location
 
 from sentence_transformers import SentenceTransformer
 model = SentenceTransformer("all-MiniLM-L6-V2")
@@ -32,6 +32,10 @@ def upload_post():
 
     # Extract GPS from EXIF if available
     gps_data = extract_gps_from_image(image_path)
+    if gps_data:
+        enrichment = enrich_location(gps_data['lat'], gps_data['lon'], model=model)
+        if enrichment:
+            gps_data.update(enrichment)
     
     analysis_result = get_image_caption_and_sentiment(image_path, caption)
     
