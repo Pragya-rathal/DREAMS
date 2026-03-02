@@ -9,6 +9,7 @@ Pipeline:
 """
 
 import logging
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -28,6 +29,7 @@ _NOMINATIM_USER_AGENT = (
 )
 _MIN_REQUEST_INTERVAL = 1.1  # Nominatim policy: max 1 request / second
 _CACHE_PRECISION = 5         # decimal places ≈ 1 m resolution
+_MAX_CACHE_SIZE = 10_000     # bounded LRU-style eviction (oldest first)
 
 # City-like keys Nominatim may use, in priority order
 _CITY_KEYS = ("city", "town", "village", "hamlet")
@@ -37,6 +39,7 @@ _CITY_KEYS = ("city", "town", "village", "hamlet")
 
 _geocode_cache: Dict[tuple, dict] = {}
 _last_request_time: float = 0.0
+_nominatim_lock = threading.Lock()  # protects _geocode_cache + _last_request_time
 _embedding_model = None
 
 
@@ -228,57 +231,60 @@ def reverse_geocode(lat: float, lon: float) -> Optional[Dict[str, Any]]:
         logger.warning("Invalid coordinates: lat=%s, lon=%s", lat, lon)
         return None
 
-    cache_key = (round(lat, _CACHE_PRECISION), round(lon, _CACHE_PRECISION))
-    if cache_key in _geocode_cache:
-        return _geocode_cache[cache_key]
+    with _nominatim_lock:
+        cache_key = (round(lat, _CACHE_PRECISION), round(lon, _CACHE_PRECISION))
+        if cache_key in _geocode_cache:
+            return _geocode_cache[cache_key]
 
-    _rate_limit()
+        _rate_limit()
 
-    try:
-        response = requests.get(
-            _NOMINATIM_URL,
-            params={
-                "lat": lat,
-                "lon": lon,
-                "format": "jsonv2",
-                "addressdetails": 1,
-                "accept-language": "en",
-            },
-            headers={"User-Agent": _NOMINATIM_USER_AGENT},
-            timeout=10,
-        )
-        _last_request_time = time.time()
-        response.raise_for_status()
-        data = response.json()
+        try:
+            response = requests.get(
+                _NOMINATIM_URL,
+                params={
+                    "lat": lat,
+                    "lon": lon,
+                    "format": "jsonv2",
+                    "addressdetails": 1,
+                    "accept-language": "en",
+                },
+                headers={"User-Agent": _NOMINATIM_USER_AGENT},
+                timeout=10,
+            )
+            _last_request_time = time.time()
+            response.raise_for_status()
+            data = response.json()
 
-        if "error" in data:
-            logger.warning("Nominatim error: %s", data["error"])
+            if "error" in data:
+                logger.warning("Nominatim error: %s", data["error"])
+                return None
+
+            address_raw = data.get("address", {})
+            osm_class = data.get("category", "")
+
+            result = {
+                "display_name": data.get("display_name", ""),
+                "place_category": data.get("type", ""),
+                "place_type": osm_class,
+                "osm_class": osm_class,
+                "address": {
+                    "road": address_raw.get("road"),
+                    "city": _resolve_city(address_raw),
+                    "state": address_raw.get("state"),
+                    "country": address_raw.get("country"),
+                    "country_code": address_raw.get("country_code"),
+                },
+            }
+
+            _geocode_cache[cache_key] = result
+            if len(_geocode_cache) > _MAX_CACHE_SIZE:
+                _geocode_cache.pop(next(iter(_geocode_cache)))
+            return result
+
+        except (requests.RequestException, ValueError, KeyError) as exc:
+            _last_request_time = time.time()
+            logger.error("Reverse geocoding failed for (%s, %s): %s", lat, lon, exc)
             return None
-
-        address_raw = data.get("address", {})
-        osm_class = data.get("category", "")
-
-        result = {
-            "display_name": data.get("display_name", ""),
-            "place_category": data.get("type", ""),
-            "place_type": osm_class,
-            "osm_class": osm_class,
-            "address": {
-                "road": address_raw.get("road"),
-                "city": _resolve_city(address_raw),
-                "state": address_raw.get("state"),
-                "country": address_raw.get("country"),
-                "country_code": address_raw.get("country_code"),
-            },
-        }
-
-        _geocode_cache[cache_key] = result
-        return result
-
-    except (requests.RequestException, ValueError, KeyError) as exc:
-        _last_request_time = time.time()
-        logger.error("Reverse geocoding failed for (%s, %s): %s", lat, lon, exc)
-        return None
 
 
 def format_location_text(
