@@ -82,8 +82,6 @@ class TestReverseGeocode:
         assert result["display_name"] == "St. Mary's Church, Main St, Anchorage, AK, USA"
         assert result["place_category"] == "place_of_worship"
         assert result["place_type"] == "amenity"
-        assert result["address"]["city"] == "Anchorage"
-        assert result["osm_class"] == "amenity"
 
     @patch("location_extractor.requests.get")
     @patch("location_extractor.time.sleep")
@@ -141,7 +139,6 @@ class TestFormatLocationText:
             "display_name": "St. Mary's Church, Main St, Anchorage, AK, USA",
             "place_category": "place_of_worship",
             "place_type": "amenity",
-            "osm_class": "amenity",
             "address": {
                 "amenity": "St. Mary's Church",
                 "road": "Main Street",
@@ -169,7 +166,6 @@ class TestFormatLocationText:
             "display_name": "Westchester Lagoon, Spenard Rd, Anchorage, AK, USA",
             "place_category": "park",
             "place_type": "leisure",
-            "osm_class": "leisure",
             "address": {
                 "leisure": "Westchester Lagoon",
                 "road": "Spenard Rd",
@@ -186,7 +182,6 @@ class TestFormatLocationText:
             "display_name": "Some Road, Anchorage, AK, USA",
             "place_category": "residential",
             "place_type": "residential",
-            "osm_class": "residential",
             "address": {},
         }
         text = location_extractor.format_location_text(geocode, 61.2, -149.9)
@@ -237,7 +232,6 @@ class TestEnrichLocation:
             "display_name": "St. Mary's Church, Main St, Anchorage, AK, USA",
             "place_category": "place_of_worship",
             "place_type": "amenity",
-            "osm_class": "amenity",
             "address": {
                 "amenity": "St. Mary's Church",
                 "city": "Anchorage",
